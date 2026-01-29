@@ -5,12 +5,15 @@ import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { setProduct, setQuantity, setStep } from '../features/checkout/checkoutSlice';
 import { fetchProducts, selectProduct } from '../features/products/productsSlice';
+import { addToCart } from '../features/cart/cartSlice';
+import { useNotification } from '../hooks/useNotification';
 import type { Product } from '../types';
 
 const ProductPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const { showSuccess } = useNotification();
   const { items, loading } = useAppSelector((state) => state.products);
   const [quantity, setLocalQuantity] = useState(1);
   const [isInfoOpen, setIsInfoOpen] = useState(true);
@@ -46,6 +49,13 @@ const ProductPage = () => {
     if (newQuantity < 1) return;
     if (newQuantity > product.stock) return;
     setLocalQuantity(newQuantity);
+  };
+
+  const handleAddToCart = () => {
+    if (!product) return;
+    
+    dispatch(addToCart({ product, quantity }));
+    showSuccess(`${product.name} agregado al carrito`, 2000);
   };
 
   if (loading) {
@@ -89,7 +99,7 @@ const ProductPage = () => {
           {/* Product Images */}
           <div className="space-y-4">
             {/* Main Image */}
-            <div className="aspect-square bg-gray-50 flex items-center justify-center">
+            <div className="aspect-square bg-gray-50 rounded-xl overflow-hidden flex items-center justify-center">
               {product.imageUrl ? (
                 <img
                   src={product.imageUrl}
@@ -147,7 +157,7 @@ const ProductPage = () => {
                   <button
                     onClick={() => handleQuantityChange(quantity - 1)}
                     disabled={quantity <= 1}
-                    className="w-10 h-10 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="w-10 h-10 rounded-xl border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
@@ -157,14 +167,14 @@ const ProductPage = () => {
                     type="number"
                     value={quantity}
                     onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 1)}
-                    className="w-16 h-10 text-center border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-gray-400"
+                    className="w-16 h-10 text-center border border-gray-300 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-400"
                     min="1"
                     max={product.stock}
                   />
                   <button
                     onClick={() => handleQuantityChange(quantity + 1)}
                     disabled={quantity >= product.stock}
-                    className="w-10 h-10 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="w-10 h-10 rounded-xl border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -191,15 +201,16 @@ const ProductPage = () => {
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-3 mb-6">
               <button
+                onClick={handleAddToCart}
                 disabled={isOutOfStock}
-                className="flex-1 px-6 py-3 border-2 border-teal-500 text-teal-600 font-semibold rounded hover:bg-teal-50 disabled:border-gray-300 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 px-6 py-3 border-2 border-teal-500 text-teal-600 font-semibold rounded-xl hover:bg-teal-50 disabled:border-gray-300 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
               >
                 Agregar al Carrito
               </button>
               <button
                 onClick={handleBuyNow}
                 disabled={isOutOfStock}
-                className="flex-1 px-6 py-3 bg-teal-500 text-white font-semibold rounded hover:bg-teal-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 px-6 py-3 bg-teal-500 text-white font-semibold rounded-xl hover:bg-teal-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
               >
                 {isOutOfStock ? 'Agotado' : 'Comprar'}
               </button>
@@ -279,7 +290,7 @@ const ProductSpecifications = ({ product }: ProductSpecificationsProps) => {
   ];
 
   return (
-    <div className="bg-gray-50 rounded-lg overflow-hidden">
+    <div className="bg-gray-50 rounded-xl overflow-hidden">
       <table className="w-full">
         <tbody>
           {specifications.map((spec, index) => (

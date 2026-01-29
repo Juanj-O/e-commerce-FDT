@@ -51,6 +51,11 @@ export const detectCardBrand = (cardNumber: string): CardBrand => {
     return 'amex';
   }
 
+  // Diners Club: starts with 36, 38, or 300-305
+  if (/^3[68]/.test(cleanNumber) || /^30[0-5]/.test(cleanNumber)) {
+    return 'diners';
+  }
+
   return 'unknown';
 };
 
@@ -148,6 +153,7 @@ export const getCardBrandInfo = (brand: CardBrand): { name: string; color: strin
     visa: { name: 'Visa', color: '#1A1F71' },
     mastercard: { name: 'Mastercard', color: '#EB001B' },
     amex: { name: 'American Express', color: '#006FCF' },
+    diners: { name: 'Diners Club', color: '#0079BE' },
     unknown: { name: 'Card', color: '#6B7280' },
   };
 

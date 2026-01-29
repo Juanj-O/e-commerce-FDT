@@ -1,14 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../app/hooks';
-import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
+import { Header } from '../components/Header';
 import {
-  selectCheckoutTotal,
   setCreditCard,
   setCustomer,
   setDelivery,
 } from '../features/checkout/checkoutSlice';
+import { selectCartItems, selectCartItemsCount, selectCartTotal } from '../features/cart/cartSlice';
 import { processPayment } from '../features/transaction/transactionSlice';
 import type { CreditCardData, Customer, DeliveryInfo } from '../types';
 import {
@@ -27,38 +27,46 @@ export const CheckoutPage = () => {
     (state) => state.checkout
   );
   const { status } = useAppSelector((state) => state.transaction);
-  const totalAmount = useAppSelector(selectCheckoutTotal);
+  
+  // Cart items para mostrar en "Tu pedido"
+  const cartItems = useAppSelector(selectCartItems);
+  const cartItemsCount = useAppSelector(selectCartItemsCount);
+  const cartTotal = useAppSelector(selectCartTotal);
 
-  // Sections collapse state
+  // Sections collapse state - TODOS ABIERTOS POR DEFECTO
   const [isOrderOpen, setIsOrderOpen] = useState(true);
-  const [isCustomerOpen, setIsCustomerOpen] = useState(false);
-  const [isDeliveryOpen, setIsDeliveryOpen] = useState(false);
-  const [isShippingOpen, setIsShippingOpen] = useState(false);
-  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [isCustomerOpen, setIsCustomerOpen] = useState(true);
+  const [isDeliveryOpen, setIsDeliveryOpen] = useState(true);
+  const [isShippingOpen, setIsShippingOpen] = useState(true);
+  const [isPaymentOpen, setIsPaymentOpen] = useState(true);
   
   // Payment state
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
   const [isCardModalOpen, setIsCardModalOpen] = useState(false);
   const [detectedCardBrand, setDetectedCardBrand] = useState<string>('visa');
+  
+  // Términos y condiciones
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
-  // Form states
+  // Form states con DATA DUMMY PRE-LLENADA
   const [customerForm, setCustomerForm] = useState<Customer>(
     customer || {
-      fullName: '',
-      email: '',
-      phone: '',
+      fullName: 'Juan Carlos Pérez',
+      email: 'juancarlos@example.com',
+      phone: '+57 312 456 7890',
     }
   );
 
   const [deliveryForm, setDeliveryForm] = useState<DeliveryInfo>(
     delivery || {
-      address: '',
-      city: '',
-      department: '',
-      zipCode: '',
+      address: 'Calle 100 #8A-55, Torre Colpatria, Oficina 1205',
+      city: 'Bogotá',
+      department: 'Cundinamarca',
+      zipCode: '110111',
     }
   );
 
+  // TARJETA DE CRÉDITO VACÍA (no pre-llenada)
   const [cardForm, setCardForm] = useState<CreditCardData>(
     creditCard || {
       number: '',
@@ -71,6 +79,7 @@ export const CheckoutPage = () => {
   
   const [cardNumber, setCardNumber] = useState<string>('');
   const [expiryDate, setExpiryDate] = useState<string>('');
+  const [installments, setInstallments] = useState<number>(1);
 
   // Redirect if no product
   useEffect(() => {
@@ -129,7 +138,8 @@ export const CheckoutPage = () => {
       customerForm.email &&
       customerForm.phone &&
       deliveryForm.address &&
-      deliveryForm.city
+      deliveryForm.city &&
+      acceptedTerms // REQUIERE TÉRMINOS ACEPTADOS
     );
   };
 
@@ -137,7 +147,8 @@ export const CheckoutPage = () => {
     return (
       validateCardNumber(cardNumber) &&
       validateExpiryDate(cardForm.expMonth, cardForm.expYear) &&
-      validateCVC(cardForm.cvc, 'visa')
+      validateCVC(cardForm.cvc, 'visa') &&
+      acceptedTerms // REQUIERE TÉRMINOS ACEPTADOS
     );
   };
 
@@ -157,9 +168,11 @@ export const CheckoutPage = () => {
 
   if (!product) return null;
 
-  const subtotal = product.price * quantity;
+  // Usar el total del carrito si hay items, sino usar el producto individual
+  const subtotal = cartItems.length > 0 ? cartTotal : product.price * quantity;
   const shippingFee = fees.deliveryFee;
-  const total = totalAmount;
+  const total = subtotal + shippingFee;
+  const itemsCount = cartItems.length > 0 ? cartItemsCount : quantity;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -185,27 +198,60 @@ export const CheckoutPage = () => {
                   Fecha programada de inicio del envío: 19 mar. 2026 ~ 26 mar. 2026
                 </div>
                 
-                <div className="flex gap-4">
-                  <div className="w-20 h-20 bg-gray-100 rounded flex-shrink-0 overflow-hidden">
-                    {product.imageUrl ? (
-                      <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                        SET
+                {/* Mostrar todos los productos del carrito */}
+                {cartItems.length > 0 ? (
+                  <div className="space-y-4">
+                    {cartItems.map((item) => (
+                      <div key={item.product.id} className="flex gap-4 pb-4 border-b border-gray-200 last:border-b-0">
+                        <div className="w-16 h-16 bg-gray-100 rounded-xl flex-shrink-0 overflow-hidden">
+                          {item.product.imageUrl ? (
+                            <img 
+                              src={item.product.imageUrl} 
+                              alt={item.product.name} 
+                              className="w-full h-full object-cover" 
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                              IMG
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-medium text-gray-900 text-sm">{item.product.name}</h3>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {item.product.description || `${item.product.name} / ${item.quantity} artículo`}
+                          </p>
+                          <p className="text-base font-bold text-gray-900 mt-2">
+                            {formatPrice(item.product.price * item.quantity)}
+                          </p>
+                        </div>
                       </div>
-                    )}
+                    ))}
                   </div>
-                  <div className="flex-1">
-                    <h3 className="font-medium text-gray-900">{product.name}</h3>
-                    <p className="text-sm text-gray-500 mt-1">{quantity} artículo</p>
-                    <p className="text-lg font-bold text-gray-900 mt-2">
-                      {formatPrice(product.price)}
-                    </p>
+                ) : (
+                  // Fallback: mostrar el producto individual si no hay carrito
+                  <div className="flex gap-4">
+                    <div className="w-16 h-16 bg-gray-100 rounded-xl flex-shrink-0 overflow-hidden">
+                      {product.imageUrl ? (
+                        <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                          IMG
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-medium text-gray-900 text-sm">{product.name}</h3>
+                      <p className="text-xs text-gray-500 mt-1">{product.name} / {quantity} artículo</p>
+                      <p className="text-base font-bold text-gray-900 mt-2">
+                        {formatPrice(product.price * quantity)}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="border-t pt-4 flex justify-between items-center font-bold">
-                  <span>Total ({quantity} artículo)</span>
+                  <span>Total ({itemsCount} artículo{itemsCount > 1 ? 's' : ''})</span>
                   <span>{formatPrice(subtotal)}</span>
                 </div>
               </div>
@@ -226,7 +272,7 @@ export const CheckoutPage = () => {
                     type="text"
                     value={customerForm.fullName}
                     onChange={(e) => setCustomerForm({ ...customerForm, fullName: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     placeholder="Jhon Doe"
                   />
                 </div>
@@ -238,7 +284,7 @@ export const CheckoutPage = () => {
                     type="email"
                     value={customerForm.email}
                     onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     placeholder="jhondoe@gmail.com"
                   />
                 </div>
@@ -250,7 +296,7 @@ export const CheckoutPage = () => {
                     type="tel"
                     value={customerForm.phone}
                     onChange={(e) => setCustomerForm({ ...customerForm, phone: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     placeholder="+57 3523523523"
                   />
                 </div>
@@ -272,7 +318,7 @@ export const CheckoutPage = () => {
                     type="text"
                     value={deliveryForm.address}
                     onChange={(e) => setDeliveryForm({ ...deliveryForm, address: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     placeholder="Clle 24 s # 425"
                   />
                 </div>
@@ -285,7 +331,7 @@ export const CheckoutPage = () => {
                       type="text"
                       value={deliveryForm.city}
                       onChange={(e) => setDeliveryForm({ ...deliveryForm, city: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                       placeholder="Bogotá"
                     />
                   </div>
@@ -297,7 +343,7 @@ export const CheckoutPage = () => {
                       type="text"
                       value={deliveryForm.department}
                       onChange={(e) => setDeliveryForm({ ...deliveryForm, department: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                       placeholder="Cundinamarca"
                     />
                   </div>
@@ -311,7 +357,7 @@ export const CheckoutPage = () => {
                       type="text"
                       value={deliveryForm.zipCode || ''}
                       onChange={(e) => setDeliveryForm({ ...deliveryForm, zipCode: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                       placeholder="110111"
                     />
                   </div>
@@ -323,7 +369,7 @@ export const CheckoutPage = () => {
                       type="text"
                       value="Colombia"
                       readOnly
-                      className="w-full px-4 py-2 border border-gray-300 rounded bg-gray-50"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl bg-gray-50"
                     />
                   </div>
                 </div>
@@ -340,7 +386,7 @@ export const CheckoutPage = () => {
                 <p className="text-sm text-gray-600">
                   El cronograma de envío puede cambiar dependiendo de las circunstancias de la empresa de mensajería. Es posible que se apliquen costos de envío adicionales según su ubicación.
                 </p>
-                <div className="flex items-center justify-between p-4 border-2 border-teal-500 rounded-lg bg-teal-50">
+                <div className="flex items-center justify-between p-4 border-2 border-teal-500 rounded-xl bg-teal-50">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-teal-500 rounded-full flex items-center justify-center">
                       <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -415,24 +461,32 @@ export const CheckoutPage = () => {
                 </div>
               </div>
 
-              <button
-                onClick={handlePaymentSubmit}
-                disabled={!isFormValid() || status === 'loading'}
-                className="w-full bg-teal-500 text-white py-4 rounded-lg font-semibold hover:bg-teal-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-lg"
-              >
-                {status === 'loading' ? 'Procesando...' : `Aceptar y pagar ${formatPrice(total)}`}
-              </button>
-
-              <div className="mt-4 flex items-start gap-2">
+              <div className="mb-4 flex items-start gap-2">
                 <input
                   type="checkbox"
                   id="terms"
-                  className="mt-1"
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  className="mt-1 w-4 h-4 text-teal-500 border-gray-300 rounded-lg focus:ring-teal-500 cursor-pointer"
                 />
-                <label htmlFor="terms" className="text-xs text-gray-500">
-                  Leí los Términos de uso y acepto la recopilación, el uso y el suministro de información personal (incluso al extranjero).
+                <label htmlFor="terms" className="text-xs text-gray-600 cursor-pointer select-none">
+                  Leí los <span className="text-teal-600 font-medium hover:underline">Términos de uso</span> y acepto la recopilación, el uso y el suministro de información personal (incluso al extranjero).
                 </label>
               </div>
+
+              <button
+                onClick={handlePaymentSubmit}
+                disabled={!isFormValid() || status === 'loading'}
+                className="w-full bg-teal-500 text-white py-4 rounded-xl font-semibold hover:bg-teal-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-lg"
+              >
+                {status === 'loading' ? 'Procesando...' : `Aceptar y pagar ${formatPrice(total)}`}
+              </button>
+              
+              {!acceptedTerms && selectedPaymentMethod && (
+                <p className="mt-2 text-xs text-red-600 text-center">
+                  Debes aceptar los términos y condiciones para continuar
+                </p>
+              )}
 
               <p className="text-xs text-gray-500 mt-4">
                 Cuando realices pagos al extranjero o uses una tarjeta de crédito que no se haya emitido en Corea del Sur, ten en cuenta que las tasas de cambio y las cuotas de procesamiento pueden variar según el método de pago o emisor de la tarjeta y la carga final puede diferir del monto que se muestra.
@@ -450,14 +504,14 @@ export const CheckoutPage = () => {
           onSubmit={handleSubmit}
           cardNumber={cardNumber}
           onCardNumberChange={handleCardNumberChange}
-          cardHolder={cardForm.cardHolder}
-          onCardHolderChange={(value) => setCardForm({ ...cardForm, cardHolder: value })}
           expiryDate={expiryDate}
           onExpiryDateChange={handleExpiryChange}
           cvc={cardForm.cvc}
           onCvcChange={(value) => setCardForm({ ...cardForm, cvc: value })}
           email={customerForm.email}
           onEmailChange={(value) => setCustomerForm({ ...customerForm, email: value })}
+          installments={installments}
+          onInstallmentsChange={setInstallments}
           totalAmount={total}
           productName={product.name}
           detectedCardBrand={detectedCardBrand}
@@ -521,7 +575,7 @@ const PaymentMethodButton = ({ name, isSelected, isDisabled, onClick }: PaymentM
       onClick={onClick}
       disabled={isDisabled}
       className={`
-        relative p-4 rounded-lg border-2 transition-all min-h-[80px] flex items-center justify-center text-center
+        relative p-4 rounded-xl border-2 transition-all min-h-[80px] flex items-center justify-center text-center
         ${isSelected 
           ? 'border-teal-500 bg-teal-50' 
           : isDisabled 
@@ -547,6 +601,126 @@ const PaymentMethodButton = ({ name, isSelected, isDisabled, onClick }: PaymentM
   );
 };
 
+// Card Number Inputs Component con auto-avance
+interface CardNumberInputsProps {
+  cardNumber: string;
+  onCardNumberChange: (value: string) => void;
+}
+
+const CardNumberInputs = ({ cardNumber, onCardNumberChange }: CardNumberInputsProps) => {
+  const inputRefs = [
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+  ];
+
+  const handleInputChange = (index: number, inputValue: string) => {
+    const start = index * 4;
+    const currentNumber = cardNumber.replace(/\s/g, '');
+    
+    // Solo permitir números
+    const newValue = inputValue.replace(/\D/g, '').slice(0, 4);
+    
+    // Construir el nuevo número completo
+    const newNumber = 
+      currentNumber.substring(0, start) + 
+      newValue + 
+      currentNumber.substring(start + 4);
+    
+    onCardNumberChange(newNumber.slice(0, 16));
+    
+    // Auto-avanzar al siguiente input cuando se llenan 4 dígitos
+    if (newValue.length === 4 && index < 3) {
+      inputRefs[index + 1].current?.focus();
+    }
+  };
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    const input = e.currentTarget;
+    const value = input.value;
+    
+    // Si presiona Backspace y el input está vacío, ir al anterior
+    if (e.key === 'Backspace' && value.length === 0 && index > 0) {
+      e.preventDefault();
+      inputRefs[index - 1].current?.focus();
+      
+      // Borrar el último dígito del input anterior
+      const start = (index - 1) * 4;
+      const currentNumber = cardNumber.replace(/\s/g, '');
+      const prevValue = currentNumber.substring(start, start + 4);
+      
+      if (prevValue.length > 0) {
+        const newPrevValue = prevValue.slice(0, -1);
+        const newNumber = 
+          currentNumber.substring(0, start) + 
+          newPrevValue + 
+          currentNumber.substring(start + 4);
+        onCardNumberChange(newNumber);
+      }
+    }
+    
+    // Si presiona flecha izquierda al inicio, ir al anterior
+    if (e.key === 'ArrowLeft' && input.selectionStart === 0 && index > 0) {
+      e.preventDefault();
+      inputRefs[index - 1].current?.focus();
+      const prevInput = inputRefs[index - 1].current;
+      if (prevInput) {
+        prevInput.selectionStart = prevInput.value.length;
+        prevInput.selectionEnd = prevInput.value.length;
+      }
+    }
+    
+    // Si presiona flecha derecha al final, ir al siguiente
+    if (e.key === 'ArrowRight' && input.selectionStart === value.length && index < 3) {
+      e.preventDefault();
+      inputRefs[index + 1].current?.focus();
+      const nextInput = inputRefs[index + 1].current;
+      if (nextInput) {
+        nextInput.selectionStart = 0;
+        nextInput.selectionEnd = 0;
+      }
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 16);
+    onCardNumberChange(pastedData);
+    
+    // Enfocar el último input con contenido
+    const lastFilledIndex = Math.min(Math.floor(pastedData.length / 4), 3);
+    inputRefs[lastFilledIndex].current?.focus();
+  };
+
+  return (
+    <div className="mb-6 flex gap-2 md:gap-3">
+      {[0, 1, 2, 3].map((index) => {
+        const start = index * 4;
+        const value = cardNumber.replace(/\s/g, '').substring(start, start + 4);
+        const shouldMask = (index === 0 || index === 3) && value.length > 0;
+        
+        return (
+          <input
+            key={index}
+            ref={inputRefs[index]}
+            type={shouldMask ? "password" : "text"}
+            value={value}
+            onChange={(e) => handleInputChange(index, e.target.value)}
+            onKeyDown={(e) => handleKeyDown(index, e)}
+            onPaste={index === 0 ? handlePaste : undefined}
+            maxLength={4}
+            inputMode="numeric"
+            pattern="[0-9]*"
+            className="w-1/4 rounded-xl border border-gray-300 bg-gray-50 px-2 md:px-3 py-2 md:py-2 text-center text-sm md:text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="0000"
+          />
+        );
+      })}
+    </div>
+  );
+};
+
 // Card Payment Modal Component
 interface CardPaymentModalProps {
   isOpen: boolean;
@@ -554,14 +728,14 @@ interface CardPaymentModalProps {
   onSubmit: () => void;
   cardNumber: string;
   onCardNumberChange: (value: string) => void;
-  cardHolder: string;
-  onCardHolderChange: (value: string) => void;
   expiryDate: string;
   onExpiryDateChange: (value: string) => void;
   cvc: string;
   onCvcChange: (value: string) => void;
   email: string;
   onEmailChange: (value: string) => void;
+  installments: number;
+  onInstallmentsChange: (value: number) => void;
   totalAmount: number;
   productName: string;
   detectedCardBrand: string;
@@ -574,14 +748,14 @@ const CardPaymentModal = ({
   onSubmit,
   cardNumber,
   onCardNumberChange,
-  cardHolder,
-  onCardHolderChange,
   expiryDate,
   onExpiryDateChange,
   cvc,
   onCvcChange,
   email,
   onEmailChange,
+  installments,
+  onInstallmentsChange,
   totalAmount,
   productName,
   detectedCardBrand,
@@ -600,168 +774,168 @@ const CardPaymentModal = ({
       visa: 'VISA internacional',
       mastercard: 'Mastercard internacional',
       amex: 'American Express',
+      diners: 'Diners Club',
       unknown: 'Tarjeta bancaria',
     };
     return names[brand] || 'Tarjeta bancaria';
   };
 
+  // Memorizar las opciones de cuotas para evitar recalcular en cada render
+  const installmentOptions = useMemo(() => {
+    return Array.from({ length: 64 }, (_, i) => {
+      const num = i + 1;
+      const monthlyAmount = totalAmount / num;
+      return {
+        value: num,
+        label: `${num} ${num === 1 ? 'cuota' : 'cuotas'} - ${formatPrice(monthlyAmount)} / mes`
+      };
+    });
+  }, [totalAmount]);
+
   const getCardIcon = (brand: string) => {
-    switch (brand) {
-      case 'visa':
-        return (
-          <svg className="h-8 w-12" viewBox="0 0 48 32" fill="none">
-            <rect width="48" height="32" rx="4" fill="#1434CB"/>
-            <path d="M20.5 11.5h-3.2l-2 9h2l2-9zM14.3 11.5l-2 6.2-.2-1.2-.7-3.5s-.1-.5-.6-.5h-3l-.1.1s.8.2 1.6.7l1.4 5.2h2.1l3.2-7h-1.7zm19.8 0h-1.7c-.4 0-.6.2-.7.5l-3 6.5h2.1l.4-1.1h2.5l.2 1.1h1.9l-1.7-7zm-2.3 4.7l1-2.8.6 2.8h-1.6zm-5.6-3.4l.3-1.7s-.9-.3-1.9-.3c-1 0-3.4.5-3.4 2.8 0 2.2 3 2.2 3 3.4 0 1.1-2.7.9-3.6.2l-.3 1.7s1 .5 2.4.5c1.5 0 3.6-.8 3.6-2.9 0-2.2-3.1-2.4-3.1-3.4 0-.9 2.1-.8 3-.3z" fill="white"/>
-          </svg>
-        );
-      case 'mastercard':
-        return (
-          <svg className="h-8 w-12" viewBox="0 0 48 32" fill="none">
-            <rect width="48" height="32" rx="4" fill="#EB001B"/>
-            <circle cx="18" cy="16" r="10" fill="#FF5F00"/>
-            <circle cx="30" cy="16" r="10" fill="#F79E1B"/>
-            <path d="M24 8.5a9.96 9.96 0 00-3.8 7.5c0 2.9 1.2 5.5 3.2 7.4a9.96 9.96 0 003.2-7.4c0-2.9-1.2-5.5-3.2-7.5z" fill="#FF5F00"/>
-          </svg>
-        );
-      case 'amex':
-        return (
-          <svg className="h-8 w-12" viewBox="0 0 48 32" fill="none">
-            <rect width="48" height="32" rx="4" fill="#006FCF"/>
-            <path d="M10 12l-2 8h3l.3-1h1l.3 1h3.5v-.8l.3.8h2l.3-.8v.8h8.5l1-1.1 1 1.1h4.5l-2.8-4 2.8-4h-4.4l-1 1.1-.9-1.1H17v.7l-.3-.7h-2.5l-.4 1-.4-1H10zm1.4 1.5h1.7l1.3 3 1.3-3h1.7v5h-1.1v-3.8l-1.5 3.8h-.9l-1.5-3.8v3.8h-1V13.5zm8.1 0h4v1h-2.9v.8h2.8v1h-2.8v.9h2.9v1h-4v-4.7zm5.2 0h1.8l1.1 1.7 1.1-1.7h1.8l-2 2.4 2 2.3h-1.8l-1.1-1.7-1.1 1.7h-1.8l2-2.3-2-2.4zm7.8 0h1.8l1.7 2.7v-2.7h1.1v4.7h-1.7l-1.8-2.8v2.8h-1.1v-4.7z" fill="white"/>
-          </svg>
-        );
-      default:
-        return (
-          <svg className="h-8 w-12" viewBox="0 0 48 32" fill="none">
-            <rect width="48" height="32" rx="4" fill="#9CA3AF"/>
-            <rect x="4" y="12" width="40" height="3" fill="white" opacity="0.8"/>
-            <rect x="4" y="20" width="12" height="6" rx="1" fill="white" opacity="0.6"/>
-          </svg>
-        );
+    const cardImages: { [key: string]: string } = {
+      visa: 'https://booking.avianca.com/statics/applications/ssci/dynamicContent/1.0.5/assets/img/payment/visa.svg',
+      mastercard: 'https://booking.avianca.com/statics/applications/ssci/dynamicContent/1.0.5/assets/img/payment/mastercard.svg',
+      amex: 'https://booking.avianca.com/statics/applications/ssci/dynamicContent/1.0.5/assets/img/payment/amex.jpg',
+      diners: 'https://booking.avianca.com/statics/applications/ssci/dynamicContent/1.0.5/assets/img/payment/diners.png',
+    };
+
+    const imageUrl = cardImages[brand];
+
+    if (imageUrl) {
+      return (
+        <img 
+          src={imageUrl} 
+          alt={brand}
+          className="h-6 w-10 object-contain"
+        />
+      );
     }
+
+    // Icono por defecto si no se reconoce la tarjeta
+    return (
+      <svg className="h-6 w-10" viewBox="0 0 40 24" fill="none">
+        <rect width="40" height="24" rx="3" fill="#9CA3AF"/>
+        <rect x="3" y="9" width="34" height="2" fill="white" opacity="0.8"/>
+        <rect x="3" y="15" width="10" height="5" rx="1" fill="white" opacity="0.6"/>
+      </svg>
+    );
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#666666]/80">
-      <div className="relative w-full max-w-4xl rounded-2xl bg-white shadow-2xl flex overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#666666]/80 p-4">
+      <div className="relative w-full max-w-4xl max-h-[95vh] rounded-2xl bg-white shadow-2xl flex flex-col md:flex-row overflow-hidden">
         {/* Botón cerrar */}
         <button
           onClick={onClose}
-          className="absolute right-6 top-6 text-2xl text-gray-400 hover:text-gray-600 z-10 cursor-pointer"
+          className="absolute right-4 top-4 md:right-6 md:top-6 text-2xl text-gray-400 hover:text-gray-600 z-10 cursor-pointer"
         >
           ×
         </button>
 
         {/* Columna izquierda: formulario */}
-        <div className="flex-1 px-10 py-8">
+        <div className="flex-1 px-6 py-6 md:px-10 md:py-8 overflow-y-auto">
           <button 
             onClick={onClose}
-            className="mb-6 flex items-center text-sm text-gray-500 hover:text-gray-700"
+            className="mb-4 md:mb-6 flex items-center text-sm text-gray-500 hover:text-gray-700"
           >
             <span className="mr-2 text-lg cursor-pointer">{"<"}</span>
             Crédito
           </button>
 
-          <div className="mb-4 flex items-center justify-between">
+          {/* Resumen mobile - Solo visible en mobile */}
+          <div className="md:hidden mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
+            <div className="flex justify-between items-center">
+              <div>
+                <div className="text-xs text-gray-500 mb-1">Monto a pagar</div>
+                <div className="text-xl font-bold text-gray-900">{formatPrice(totalAmount)}</div>
+              </div>
+              <div className="text-xs text-gray-400 max-w-[120px] text-right">
+                {productName}
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-3 md:mb-4 flex items-center justify-between">
             <label className="text-sm text-gray-700">Tipo de tarjeta</label>
           </div>
-          <div className="mb-6">
-            <div className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-800 flex items-center gap-3">
+          <div className="mb-4 md:mb-6">
+            <div className="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-800 flex items-center gap-3">
               {getCardIcon(detectedCardBrand)}
-              <span>{getCardBrandName(detectedCardBrand)}</span>
+              <span className="text-sm md:text-sm">{getCardBrandName(detectedCardBrand)}</span>
             </div>
             <p className="mt-2 text-xs text-gray-400">
               Las tarjetas emitidas en el extranjero no permiten pago a plazos.
             </p>
           </div>
 
-          {/* Número de tarjeta */}
+          {/* Número de tarjeta con auto-avance */}
           <label className="mb-2 block text-sm text-gray-700">Número de tarjeta</label>
-          <div className="mb-6 flex gap-3">
-            {[0, 1, 2, 3].map((index) => {
-              const start = index * 4;
-              const value = cardNumber.replace(/\s/g, '').substring(start, start + 4);
-              const shouldMask = (index === 0 || index === 3) && value.length > 0;
-              
-              return (
-                <input
-                  key={index}
-                  type={shouldMask ? "password" : "text"}
-                  value={value}
-                  onChange={(e) => {
-                    const inputValue = e.target.value;
-                    // Permitir borrar todo
-                    if (inputValue === '') {
-                      const currentNumber = cardNumber.replace(/\s/g, '');
-                      const newNumber = 
-                        currentNumber.substring(0, start) + 
-                        currentNumber.substring(start + 4);
-                      onCardNumberChange(newNumber);
-                      return;
-                    }
-                    
-                    const newValue = inputValue.replace(/\D/g, '').slice(0, 4);
-                    const currentNumber = cardNumber.replace(/\s/g, '');
-                    const newNumber = 
-                      currentNumber.substring(0, start) + 
-                      newValue + 
-                      currentNumber.substring(start + newValue.length);
-                    onCardNumberChange(newNumber.slice(0, 16));
-                  }}
-                  maxLength={4}
-                  className="w-1/4 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-center text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="0000"
-                />
-              );
-            })}
-          </div>
+          <CardNumberInputs
+            cardNumber={cardNumber}
+            onCardNumberChange={onCardNumberChange}
+          />
 
           {/* Fecha de expiración & CVV */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-2 gap-3 md:gap-4 mb-4 md:mb-6">
             <div>
-              <label className="mb-2 block text-sm text-gray-700">Fecha de vencimiento</label>
+              <label className="mb-2 block text-xs md:text-sm text-gray-700">Fecha de vencimiento</label>
               <input
                 type="text"
                 value={expiryDate}
                 onChange={(e) => onExpiryDateChange(e.target.value)}
                 maxLength={5}
                 placeholder="MM/AA"
-                className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
             <div>
-              <label className="mb-2 block text-sm text-gray-700">CVV/CVC</label>
+              <label className="mb-2 block text-xs md:text-sm text-gray-700">CVV/CVC</label>
               <input
                 type="text"
                 value={cvc}
                 onChange={(e) => onCvcChange(e.target.value.replace(/\D/g, '').slice(0, 4))}
                 maxLength={4}
                 placeholder="123"
-                className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
           </div>
 
           {/* Email */}
-          <label className="mb-2 block text-sm text-gray-700">Correo electrónico</label>
+          <label className="mb-2 block text-xs md:text-sm text-gray-700">Correo electrónico</label>
           <input
             type="email"
             value={email}
             onChange={(e) => onEmailChange(e.target.value)}
             placeholder="john.doe@gmail.com"
-            className="mb-6 w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="mb-4 md:mb-6 w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
 
+          {/* Cuotas */}
+          <label className="mb-2 block text-xs md:text-sm text-gray-700">Número de cuotas</label>
+          <select
+            value={installments}
+            onChange={(e) => onInstallmentsChange(Number(e.target.value))}
+            className="mb-4 md:mb-6 w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            {installmentOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+
           {/* Términos */}
-          <div className="mb-6 flex items-center text-xs text-gray-600">
+          <div className="mb-4 md:mb-6 flex items-start text-xs text-gray-600">
             <input
               type="checkbox"
-              className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="mr-2 mt-0.5 h-4 w-4 rounded-lg border-gray-300 text-blue-600 focus:ring-blue-500 flex-shrink-0"
             />
-            <span>
-              [Obligatorio] Acepto las condiciones del servicio y el tratamiento de datos personales.
+            <span className="leading-tight">
+              Acepto las condiciones del servicio y el tratamiento de datos personales.
             </span>
           </div>
 
@@ -774,18 +948,18 @@ const CardPaymentModal = ({
               }
             }}
             disabled={!isValid}
-            className="mt-2 w-full rounded-lg bg-blue-600 py-3 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+            className="w-full rounded-xl bg-blue-600 py-3 md:py-3 text-sm md:text-sm font-medium text-white hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
           >
             Siguiente
           </button>
 
-          <div className="mt-4 text-center text-[11px] text-gray-400">
-            powered by toss payments
+          <div className="mt-3 md:mt-4 text-center text-[10px] md:text-[11px] text-gray-400">
+            powered by wompi payments
           </div>
         </div>
 
-        {/* Columna derecha: resumen */}
-        <div className="w-64 border-l border-gray-200 px-8 py-8 bg-gray-50">
+        {/* Columna derecha: resumen - Oculto en mobile */}
+        <div className="hidden md:block w-64 border-l border-gray-200 px-8 py-8 bg-gray-50 overflow-y-auto">
           <div className="mb-6 text-xs font-semibold text-gray-400">Producto</div>
           <div className="mb-10 text-sm text-gray-800 leading-snug">
             {productName}
@@ -796,7 +970,7 @@ const CardPaymentModal = ({
             {formatPrice(totalAmount)}
           </div>
 
-          <button className="rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-600 hover:bg-blue-100 w-full">
+          <button className="rounded-xl bg-blue-50 px-3 py-2 text-xs text-blue-600 hover:bg-blue-100 w-full">
             Obtener descuento inmediato
           </button>
         </div>

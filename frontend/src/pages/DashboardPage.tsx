@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../app/hooks';
-import { fetchProducts } from '../features/products/productsSlice';
+import { Footer } from '../components/Footer';
 import { Header } from '../components/Header';
 import { HeroSlider } from '../components/HeroSlider';
 import { ProductGrid } from '../components/ProductGrid';
-import { Footer } from '../components/Footer';
+import { fetchProducts } from '../features/products/productsSlice';
 
 const CATEGORIES = ['Todo', 'Electrónicos', 'Computadoras', 'Audio', 'Wearables', 'Accesorios'];
 
@@ -18,7 +18,7 @@ const ANNOUNCEMENTS = [
   {
     id: 2,
     tag: 'PROMO',
-    title: '🎁 [e-commerce-FDT] Regalo especial en compras superiores a $500.000',
+    title: '🎁 [Ecommerce - W] Regalo especial en compras superiores a $500.000',
     date: '25 ene. 2026',
   },
   {

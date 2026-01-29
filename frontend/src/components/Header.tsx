@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAppSelector } from '../app/hooks';
+import { selectCartItemsCount } from '../features/cart/cartSlice';
 
 export const Header = () => {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const cartItemsCount = useAppSelector(selectCartItemsCount);
 
   return (
     <header className="bg-white sticky top-0 z-50 border-b border-gray-200 shadow-sm">
@@ -19,7 +22,7 @@ export const Header = () => {
             </div>
             {/* Nombre completo - oculto en mobile */}
             <div className="hidden md:flex flex-col">
-              <span className="font-bold text-lg text-gray-900 leading-tight">e-commerce-FDT</span>
+              <span className="font-bold text-lg text-gray-900 leading-tight">Ecommerce - W</span>
               <span className="text-xs text-gray-500">Tech Store</span>
             </div>
           </div>
@@ -42,13 +45,18 @@ export const Header = () => {
           {/* Actions */}
           <div className="flex items-center gap-2 md:gap-4">
             {/* Carrito */}
-            <button className="p-2 text-gray-600 hover:text-gray-900 relative">
+            <button 
+              className="p-2 text-gray-600 hover:text-gray-900 relative"
+              onClick={() => navigate('/cart')}
+            >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
               </svg>
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 text-white text-xs rounded-full flex items-center justify-center">
-                0
-              </span>
+              {cartItemsCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 text-white text-xs rounded-full flex items-center justify-center">
+                  {cartItemsCount}
+                </span>
+              )}
             </button>
 
             {/* Menu Hamburguesa - Mobile */}

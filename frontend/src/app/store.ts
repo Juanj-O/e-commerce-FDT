@@ -13,18 +13,22 @@ import storage from 'redux-persist/lib/storage';
 import productsReducer from '../features/products/productsSlice';
 import checkoutReducer from '../features/checkout/checkoutSlice';
 import transactionReducer from '../features/transaction/transactionSlice';
+import cartReducer from '../features/cart/cartSlice';
+import notificationsReducer from '../features/notifications/notificationSlice';
 
 const persistConfig = {
   key: 'ecommerce-root',
   version: 1,
   storage,
-  whitelist: ['checkout', 'transaction'], // Only persist checkout and transaction state
+  whitelist: ['checkout', 'transaction', 'cart'], // Persist checkout, transaction and cart state
 };
 
 const rootReducer = combineReducers({
   products: productsReducer,
   checkout: checkoutReducer,
   transaction: transactionReducer,
+  cart: cartReducer,
+  notifications: notificationsReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

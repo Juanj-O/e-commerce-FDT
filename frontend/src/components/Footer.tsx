@@ -21,7 +21,7 @@ export const Footer: React.FC = () => {
         {/* Información de la empresa */}
         <div className="text-xs text-gray-600 space-y-2 mb-6">
           <div className="flex flex-wrap gap-x-4 gap-y-1">
-            <span><span className="font-semibold text-gray-700">NOMBRE DE LA EMPRESA</span> e-commerce-FDT S.A.S.</span>
+            <span><span className="font-semibold text-gray-700">NOMBRE DE LA EMPRESA</span> Ecommerce - W S.A.S.</span>
             <span><span className="font-semibold text-gray-700">GERENTE</span> Juan José Osorio</span>
           </div>
           
@@ -56,9 +56,9 @@ export const Footer: React.FC = () => {
 
         {/* Texto informativo */}
         <p className="text-xs text-gray-500 mb-6 leading-relaxed">
-          Algunos de los productos vendidos en e-commerce-FDT son ofrecidos por vendedores particulares que utilizan 
-          e-commerce-FDT como plataforma de venta. En cuanto a los productos vendidos por vendedores particulares, 
-          e-commerce-FDT S.A.S. no es partícipe de las transacciones de comercio electrónico, sino un intermediario 
+          Algunos de los productos vendidos en Ecommerce - W son ofrecidos por vendedores particulares que utilizan 
+          Ecommerce - W como plataforma de venta. En cuanto a los productos vendidos por vendedores particulares, 
+          Ecommerce - W S.A.S. no es partícipe de las transacciones de comercio electrónico, sino un intermediario 
           de comercio electrónico, que no se responsabiliza por la información o transacciones relativas a los 
           productos mencionados.
         </p>
@@ -99,7 +99,7 @@ export const Footer: React.FC = () => {
         {/* Copyright */}
         <div className="flex items-center justify-between">
           <p className="text-xs text-gray-500">
-            © 2025 e-commerce-FDT S.A.S. or its affiliates. All rights reserved.
+            © 2025 Ecommerce - W S.A.S. or its affiliates. All rights reserved.
           </p>
           
           {/* Botón scroll to top */}
