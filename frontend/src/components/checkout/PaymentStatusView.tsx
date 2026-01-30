@@ -1,5 +1,5 @@
-import type { Transaction } from '../../types';
 import type { PaymentFlowState } from '../../hooks/useCheckoutViewModel';
+import type { Transaction } from '../../types';
 
 interface PaymentStatusViewProps {
   paymentFlow: Exclude<PaymentFlowState, 'idle'>;
@@ -21,7 +21,7 @@ export const PaymentStatusView = ({
       <div className="flex flex-col items-center justify-center py-12">
         <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent mb-6" />
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Procesando pago...</h2>
-        <p className="text-sm text-gray-600">Estamos comunicándonos con Wompi</p>
+        <p className="text-sm text-gray-600">Estamos comunicándonos con Business</p>
       </div>
     );
   }
@@ -44,7 +44,7 @@ export const PaymentStatusView = ({
       <div className="flex flex-col items-center justify-center py-12">
         <div className="animate-spin rounded-full h-16 w-16 border-4 border-teal-500 border-t-transparent mb-6" />
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Consultando estado...</h2>
-        <p className="text-sm text-gray-600">Verificando con Wompi</p>
+        <p className="text-sm text-gray-600">Verificando con Business</p>
       </div>
     );
   }
@@ -63,7 +63,7 @@ export const PaymentStatusView = ({
         <button onClick={onClose} className="w-full max-w-md rounded-xl bg-blue-600 py-3 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
           Intentar de nuevo
         </button>
-        <div className="mt-6 text-center text-[10px] md:text-[11px] text-gray-400">powered by wompi payments</div>
+        <div className="mt-6 text-center text-[10px] md:text-[11px] text-gray-400">powered by business payments</div>
       </div>
     );
   }
@@ -109,10 +109,10 @@ export const PaymentStatusView = ({
             <span className="text-gray-600">ID de Transacción:</span>
             <span className="font-mono text-xs text-gray-900">{transaction.id.substring(0, 20)}...</span>
           </div>
-          {transaction.wompiTransactionId && (
+          {transaction.businessTransactionId && (
             <div className="flex justify-between text-sm p-3 bg-gray-50 rounded-xl">
-              <span className="text-gray-600">ID Wompi:</span>
-              <span className="font-mono text-xs text-gray-900">{transaction.wompiTransactionId}</span>
+              <span className="text-gray-600">ID Business:</span>
+              <span className="font-mono text-xs text-gray-900">{transaction.businessTransactionId}</span>
             </div>
           )}
           <div className="flex justify-between text-sm p-3 bg-gray-50 rounded-xl">
@@ -143,7 +143,7 @@ export const PaymentStatusView = ({
             </button>
           )}
         </div>
-        <div className="mt-6 text-center text-[10px] md:text-[11px] text-gray-400">powered by wompi payments</div>
+        <div className="mt-6 text-center text-[10px] md:text-[11px] text-gray-400">powered by business payments</div>
       </div>
     );
   }

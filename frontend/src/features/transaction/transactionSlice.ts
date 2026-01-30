@@ -1,12 +1,12 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import { transactionsApi } from '../../services/api';
 import type {
   CreateTransactionRequest,
   ProcessPaymentResponse,
   Transaction,
   TransactionStatus,
 } from '../../types';
-import { transactionsApi } from '../../services/api';
 
 interface TransactionState {
   current: Transaction | null;
@@ -31,7 +31,7 @@ export const processPayment = createAsyncThunk(
   }
 );
 
-// Consultar estado de la transacción (backend consulta Wompi y actualiza BD)
+// Consultar estado de la transacción (backend consulta Business y actualiza BD)
 export const checkTransactionStatus = createAsyncThunk(
   'transaction/checkStatus',
   async (transactionId: string): Promise<Transaction> => {

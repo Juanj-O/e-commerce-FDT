@@ -136,26 +136,3 @@ export const validateCVC = (cvc: string, cardBrand: CardBrand): boolean => {
   return /^\d{3}$/.test(cleanCVC);
 };
 
-/**
- * Mask card number for display
- */
-export const maskCardNumber = (cardNumber: string): string => {
-  const cleanNumber = cardNumber.replace(/\s|-/g, '');
-  const lastFour = cleanNumber.slice(-4);
-  return `**** **** **** ${lastFour}`;
-};
-
-/**
- * Get card brand logo URL or component name
- */
-export const getCardBrandInfo = (brand: CardBrand): { name: string; color: string } => {
-  const brandInfo: Record<CardBrand, { name: string; color: string }> = {
-    visa: { name: 'Visa', color: '#1A1F71' },
-    mastercard: { name: 'Mastercard', color: '#EB001B' },
-    amex: { name: 'American Express', color: '#006FCF' },
-    diners: { name: 'Diners Club', color: '#0079BE' },
-    unknown: { name: 'Card', color: '#6B7280' },
-  };
-
-  return brandInfo[brand];
-};

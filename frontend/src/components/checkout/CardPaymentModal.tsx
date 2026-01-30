@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CartItem } from '../../features/cart/cartSlice';
-import type { CreditCardData, Customer, DeliveryInfo, Transaction } from '../../types';
 import type { PaymentFlowState } from '../../hooks/useCheckoutViewModel';
+import type { CreditCardData, Customer, DeliveryInfo, Transaction } from '../../types';
 import { formatPrice } from '../../utils/formatters';
 import { CardNumberInputs } from './CardNumberInputs';
 import { PaymentStatusView } from './PaymentStatusView';
@@ -268,7 +268,7 @@ export const CardPaymentModal = ({
               </button>
 
               <div className="mt-3 md:mt-4 text-center text-[10px] md:text-[11px] text-gray-400">
-                powered by wompi payments
+                powered by business payments
               </div>
             </>
           ) : (
@@ -396,7 +396,7 @@ export const CardPaymentModal = ({
               </button>
 
               <div className="mt-3 md:mt-4 text-center text-[10px] md:text-[11px] text-gray-400">
-                powered by wompi payments
+                powered by business payments
               </div>
             </>
           )}
