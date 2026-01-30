@@ -1,98 +1,398 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# E-Commerce Backend API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+NestJS backend application with Hexagonal Architecture and Wompi payment integration.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## 🚀 Tech Stack
 
-## Description
+- **NestJS 11.0.1** - Progressive Node.js framework
+- **TypeScript** - Type-safe development
+- **TypeORM 0.3.28** - ORM for PostgreSQL
+- **PostgreSQL** - Relational database
+- **Swagger/OpenAPI** - API documentation
+- **Jest** - Testing framework
+- **Class Validator** - DTO validation
+- **Axios** - HTTP client for Wompi API
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## 🏗️ Architecture
 
-## Project setup
+### Hexagonal Architecture (Ports & Adapters)
 
-```bash
-$ npm install
+```
+src/
+├── domain/                     # Core business logic (no dependencies)
+│   ├── entities/              # Business entities
+│   │   ├── product.entity.ts
+│   │   ├── customer.entity.ts
+│   │   ├── transaction.entity.ts
+│   │   └── delivery.entity.ts
+│   ├── ports/                 # Interface contracts
+│   │   ├── inbound/          # Use case interfaces
+│   │   └── outbound/         # Repository & gateway interfaces
+│   ├── value-objects/        # Immutable value objects
+│   │   ├── email.vo.ts
+│   │   ├── credit-card.vo.ts
+│   │   └── address.vo.ts
+│   └── exceptions/           # Domain-specific exceptions
+│
+├── application/              # Use cases (business operations)
+│   ├── use-cases/
+│   │   ├── products/        # Product operations
+│   │   ├── transactions/    # Transaction & payment processing
+│   │   └── customers/       # Customer management
+│   ├── dtos/                # Data transfer objects
+│   └── mappers/             # Entity ↔ DTO conversion
+│
+├── infrastructure/          # External adapters
+│   ├── adapters/
+│   │   ├── inbound/        # HTTP controllers (REST API)
+│   │   └── outbound/       # Database repos, Wompi gateway
+│   ├── modules/            # NestJS dependency injection
+│   └── config/             # Database & environment config
+│
+└── shared/                 # Cross-cutting concerns
+    └── result.ts           # Railway Oriented Programming
 ```
 
-## Compile and run the project
+### Railway Oriented Programming (ROP)
 
-```bash
-# development
-$ npm run start
+Error handling uses the Result monad pattern:
 
-# watch mode
-$ npm run start:dev
+```typescript
+// Success case
+return Result.ok(data);
 
-# production mode
-$ npm run start:prod
+// Failure case
+return Result.fail(new Error('Operation failed'));
+
+// Chaining operations
+const result = await someOperation()
+  .map((data) => transform(data))
+  .flatMap((data) => anotherOperation(data))
+  .mapError((error) => new DomainException(error));
 ```
 
-## Run tests
+## 📊 Database Schema
 
-```bash
-# unit tests
-$ npm run test
+```sql
+-- Products table
+CREATE TABLE products (
+  id UUID PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  price DECIMAL(10, 2) NOT NULL,
+  stock INTEGER NOT NULL,
+  image_url VARCHAR(500),
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
 
-# e2e tests
-$ npm run test:e2e
+-- Customers table
+CREATE TABLE customers (
+  id UUID PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  full_name VARCHAR(255) NOT NULL,
+  phone VARCHAR(20),
+  created_at TIMESTAMP DEFAULT NOW()
+);
 
-# test coverage
-$ npm run test:cov
+-- Deliveries table
+CREATE TABLE deliveries (
+  id UUID PRIMARY KEY,
+  customer_id UUID REFERENCES customers(id),
+  address VARCHAR(500) NOT NULL,
+  city VARCHAR(100) NOT NULL,
+  department VARCHAR(100) NOT NULL,
+  zip_code VARCHAR(20),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Transactions table
+CREATE TABLE transactions (
+  id UUID PRIMARY KEY,
+  customer_id UUID REFERENCES customers(id),
+  product_id UUID REFERENCES products(id),
+  delivery_id UUID REFERENCES deliveries(id),
+  quantity INTEGER NOT NULL,
+  product_amount DECIMAL(10, 2) NOT NULL,
+  base_fee DECIMAL(10, 2) NOT NULL,
+  delivery_fee DECIMAL(10, 2) NOT NULL,
+  total_amount DECIMAL(10, 2) NOT NULL,
+  status VARCHAR(50) NOT NULL, -- PENDING, APPROVED, DECLINED, ERROR
+  business_transaction_id VARCHAR(255),
+  business_reference VARCHAR(255),
+  payment_method VARCHAR(50),
+  card_last_four VARCHAR(4),
+  error_message TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
 ```
 
-## Deployment
+## 🔌 API Endpoints
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+### Products
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+| Method | Endpoint            | Description                           |
+| ------ | ------------------- | ------------------------------------- |
+| `GET`  | `/api/products`     | Get all products with available stock |
+| `GET`  | `/api/products/:id` | Get product by ID                     |
+
+### Transactions
+
+| Method | Endpoint                | Description                            |
+| ------ | ----------------------- | -------------------------------------- |
+| `POST` | `/api/transactions`     | Create transaction and process payment |
+| `GET`  | `/api/transactions/:id` | Get transaction details by ID          |
+
+### Swagger Documentation
+
+Interactive API docs available at: **http://localhost:3000/api/docs**
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- PostgreSQL (via Docker or local)
+- npm or yarn
+
+### Installation
+
+1. **Install dependencies:**
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm install
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+2. **Setup database:**
 
-## Resources
+```bash
+# Start PostgreSQL with Docker
+docker-compose up -d
 
-Check out a few resources that may come in handy when working with NestJS:
+# Or use your local PostgreSQL instance
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+3. **Configure environment:**
 
-## Support
+```bash
+# Create .env file
+cp .env.example .env
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+# Edit .env with your configuration
+```
 
-## Stay in touch
+4. **Run the application:**
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```bash
+# Development mode (with hot-reload)
+npm run start:dev
 
-## License
+# Production mode
+npm run build
+npm run start:prod
+```
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+5. **Access the API:**
+
+- API: http://localhost:3000
+- Swagger: http://localhost:3000/api/docs
+- Health check: http://localhost:3000/health
+
+## ⚙️ Environment Variables
+
+Create a `.env` file in the backend root:
+
+```env
+# Application
+NODE_ENV=development
+PORT=3000
+
+# Database
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+DATABASE_USER=postgres
+DATABASE_PASSWORD=postgres123
+DATABASE_NAME=ecommerce
+
+# Wompi Payment Gateway (Sandbox)
+BUSINESS_PUBLIC_KEY=pub_stagtest_g2u0HQd3ZMh05hsSgTS2lUV8t3s4mOt7
+BUSINESS_PRIVATE_KEY=prv_stagtest_5i0ZGIGiFcDQifYsXxvsny7Y37tKqFWg
+BUSINESS_INTEGRITY_KEY=stagtest_integrity_nAIBuqayW70XpUqJS4qf4STYiISd89Fp
+BUSINESS_API_URL=https://api-sandbox.co.uat.business.dev/v1
+
+# Fees (in cents COP)
+BASE_FEE=500000        # $5,000 COP transaction fee
+DELIVERY_FEE=1000000   # $10,000 COP delivery fee
+```
+
+## 🧪 Testing
+
+### Run Tests
+
+```bash
+# Unit tests
+npm run test
+
+# E2E tests
+npm run test:e2e
+
+# Test coverage
+npm run test:cov
+
+# Watch mode
+npm run test:watch
+```
+
+### Test Coverage Results
+
+✅ **85.53% coverage** (Target: 80%)
+
+- **401 tests passing**
+- Statements: 85.53%
+- Branches: 85.16%
+- Functions: 95.31%
+- Lines: 84.51%
+
+### Test Structure
+
+```
+src/
+├── domain/
+│   ├── entities/*.spec.ts         # Entity business logic tests
+│   └── value-objects/*.spec.ts    # Value object validation tests
+├── application/
+│   ├── use-cases/**/*.spec.ts     # Use case tests
+│   └── mappers/*.spec.ts          # Mapper tests
+└── infrastructure/
+    ├── adapters/
+    │   ├── inbound/**/*.spec.ts   # Controller tests
+    │   └── outbound/**/*.spec.ts  # Repository & adapter tests
+    └── modules/*.spec.ts          # Module tests
+```
+
+## 🏛️ Design Patterns
+
+### 1. Hexagonal Architecture
+
+- Separates core business logic from external concerns
+- Dependencies point inward (Domain ← Application ← Infrastructure)
+- Easy to test and maintain
+
+### 2. Repository Pattern
+
+- Abstracts data access logic
+- Allows switching databases without changing business logic
+
+### 3. Factory Pattern
+
+- Creates complex domain objects (entities, value objects)
+- Ensures objects are always in valid state
+
+### 4. Result Monad (Railway Oriented Programming)
+
+- Explicit error handling without try-catch
+- Composable operations
+- Type-safe error propagation
+
+### 5. Dependency Injection
+
+- NestJS IoC container
+- Loose coupling between components
+- Easy to mock for testing
+
+## 📝 Code Examples
+
+### Creating a Transaction (Use Case)
+
+```typescript
+// application/use-cases/transactions/create-transaction.use-case.ts
+@Injectable()
+export class CreateTransactionUseCase {
+  async execute(dto: CreateTransactionDto): Promise<Result<TransactionResponseDto>> {
+    // 1. Validate product exists and has stock
+    const productResult = await this.getProductById(dto.productId)
+    if (productResult.isFailure) return Result.fail(productResult.error)
+
+    // 2. Create customer and delivery records
+    const customerResult = await this.createCustomer(dto.customer)
+    const deliveryResult = await this.createDelivery(dto.delivery, customerId)
+
+    // 3. Create transaction entity
+    const transaction = Transaction.create({
+      customer, product, delivery, quantity
+    })
+
+    // 4. Process payment via Wompi
+    const paymentResult = await this.businessAdapter.processPayment(...)
+
+    // 5. Update transaction status
+    transaction.updateStatus(paymentResult.status)
+
+    // 6. Update product stock if approved
+    if (paymentResult.isApproved) {
+      await this.productRepository.decrementStock(productId, quantity)
+    }
+
+    return Result.ok(transactionDto)
+  }
+}
+```
+
+## 🔒 Security
+
+- ✅ Input validation with class-validator
+- ✅ SQL injection prevention (TypeORM parameterized queries)
+- ✅ CORS configured
+- ✅ Environment variables for secrets
+- ✅ Credit card tokenization (no storage)
+- ⚠️ Add rate limiting for production
+- ⚠️ Add authentication/authorization (JWT)
+- ⚠️ Add request logging and monitoring
+
+## 🚢 Deployment
+
+### Docker
+
+```bash
+# Build image
+docker build -t ecommerce-backend .
+
+# Run container
+docker run -p 3000:3000 --env-file .env ecommerce-backend
+```
+
+### Cloud Platforms
+
+**Railway:**
+
+```bash
+railway init
+railway up
+```
+
+**Heroku:**
+
+```bash
+git push heroku main
+```
+
+**AWS Elastic Beanstalk:**
+
+```bash
+eb init
+eb create
+eb deploy
+```
+
+## 📚 Resources
+
+- [NestJS Documentation](https://docs.nestjs.com/)
+- [TypeORM Documentation](https://typeorm.io/)
+- [Wompi API Documentation](https://docs.wompi.co/)
+- [Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture/)
+- [Railway Oriented Programming](https://fsharpforfunandprofit.com/rop/)
+
+## 📄 License
+
+This project is for evaluation purposes only.
