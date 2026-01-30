@@ -41,8 +41,8 @@ export interface Transaction {
   deliveryFee: number;
   totalAmount: number;
   status: TransactionStatus;
-  wompiTransactionId?: string;
-  wompiReference?: string;
+  businessTransactionId?: string;
+  businessReference?: string;
   paymentMethod?: string;
   cardLastFour?: string;
   errorMessage?: string;
