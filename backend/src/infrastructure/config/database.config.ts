@@ -8,21 +8,24 @@ export const getDatabaseConfig = (
   const isLocalhost =
     configService.get<string>('DATABASE_HOST') === 'localhost';
 
-  // If DATABASE_URL is provided, use it
-  if (databaseUrl) {
+  // Parse DATABASE_URL if provided
+  if (databaseUrl && !isLocalhost) {
+    const url = new URL(databaseUrl);
     return {
       type: 'postgres',
-      url: databaseUrl,
+      host: url.hostname,
+      port: parseInt(url.port) || 5432,
+      username: url.username,
+      password: url.password,
+      database: url.pathname.slice(1), // Remove leading slash
       entities: [
         __dirname +
           '/../adapters/outbound/persistence/typeorm/entities/*.orm-entity{.ts,.js}',
       ],
       synchronize: configService.get<string>('NODE_ENV') !== 'production',
       logging: configService.get<string>('NODE_ENV') === 'development',
-      extra: {
-        ssl: {
-          rejectUnauthorized: false,
-        },
+      ssl: {
+        rejectUnauthorized: false,
       },
     };
   }
@@ -47,11 +50,8 @@ export const getDatabaseConfig = (
   if (!isLocalhost) {
     return {
       ...baseConfig,
-      ssl: true,
-      extra: {
-        ssl: {
-          rejectUnauthorized: false,
-        },
+      ssl: {
+        rejectUnauthorized: false,
       },
     };
   }

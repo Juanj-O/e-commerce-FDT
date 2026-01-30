@@ -1,0 +1,32 @@
+services:
+  # Backend API
+  - type: web
+    name: ecommerce-backend
+    runtime: node
+    region: oregon
+    plan: free
+    branch: main
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: BUSINESS_PUBLIC_KEY
+        value: pub_stagtest_g2u0HQd3ZMh05hsSgTS2lUV8t3s4mOt7
+      - key: BUSINESS_PRIVATE_KEY
+        sync: false
+      - key: BUSINESS_INTEGRITY_KEY
+        sync: false
+      - key: BUSINESS_EVENTS_KEY
+        value: stagtest_events_2PDUmhMywUkvb1LvxYnayFbmofT7w39N
+      - key: BUSINESS_API_URL
+        value: https://api-sandbox.co.uat.business.dev/v1
+      - key: BASE_FEE
+        value: 500000
+      - key: DELIVERY_FEE
+        value: 1000000
+      - key: FRONTEND_URL
+        value: https://ecommerce352.vercel.app
