@@ -1,3 +1,9 @@
+import { TextDecoder, TextEncoder } from 'util'
+
+// Polyfills for TextEncoder/TextDecoder (needed for react-router-dom in Jest)
+global.TextEncoder = TextEncoder
+global.TextDecoder = TextDecoder as typeof global.TextDecoder
+
 // Mock import.meta for Jest
 Object.defineProperty(global, 'import', {
   value: {
