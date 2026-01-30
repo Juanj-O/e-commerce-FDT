@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import type { Product } from '../types';
+import { formatPrice } from '../utils/formatters';
 
 interface ProductGridProps {
   products: Product[];
@@ -10,14 +11,6 @@ interface ProductGridProps {
 
 export const ProductGrid = ({ products, loading, error, onRetry }: ProductGridProps) => {
   const navigate = useNavigate();
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(price);
-  };
 
   const handleProductClick = (product: Product) => {
     navigate(`/product/${product.id}`);

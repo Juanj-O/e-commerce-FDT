@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useHeroSliderViewModel } from '../hooks/useHeroSliderViewModel';
 
 const HERO_CARDS = [
   {
@@ -18,77 +18,58 @@ const HERO_CARDS = [
 ];
 
 export const HeroSlider = () => {
-  const [currentSlide, setCurrentSlide] = useState(0);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % 2); // Solo 2 posiciones
-    }, 5000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const goToPrevious = () => {
-    setCurrentSlide((prev) => (prev - 1 + 2) % 2);
-  };
-
-  const goToNext = () => {
-    setCurrentSlide((prev) => (prev + 1) % 2);
-  };
+  const vm = useHeroSliderViewModel(HERO_CARDS.length);
 
   return (
     <section className="relative bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="relative">
-          {/* Cards Container */}
           <div className="flex gap-5 justify-center">
-            {/* Primera Card */}
             <div className="w-full md:w-1/2 flex-shrink-0">
               <div
-                className={`relative h-48 sm:h-56 md:h-64 rounded-2xl overflow-hidden bg-gradient-to-br ${HERO_CARDS[currentSlide].bgColor} shadow-xl`}
+                className={`relative h-48 sm:h-56 md:h-64 rounded-2xl overflow-hidden bg-gradient-to-br ${HERO_CARDS[vm.currentSlide].bgColor} shadow-xl`}
               >
                 <div className="absolute inset-0 bg-black/30" />
                 <img
-                  src={HERO_CARDS[currentSlide].image}
-                  alt={HERO_CARDS[currentSlide].title}
+                  src={HERO_CARDS[vm.currentSlide].image}
+                  alt={HERO_CARDS[vm.currentSlide].title}
                   className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-50"
                 />
                 <div className="relative z-10 h-full flex flex-col justify-center px-6 md:px-8">
                   <h2 className="text-white text-xl sm:text-2xl md:text-3xl font-bold mb-2">
-                    {HERO_CARDS[currentSlide].title}
+                    {HERO_CARDS[vm.currentSlide].title}
                   </h2>
                   <p className="text-white/90 text-sm sm:text-base">
-                    {HERO_CARDS[currentSlide].subtitle}
+                    {HERO_CARDS[vm.currentSlide].subtitle}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Segunda Card */}
             <div className="hidden md:block md:w-1/2 flex-shrink-0">
               <div
-                className={`relative h-48 sm:h-56 md:h-64 rounded-2xl overflow-hidden bg-gradient-to-br ${HERO_CARDS[(currentSlide + 1) % 2].bgColor} shadow-xl`}
+                className={`relative h-48 sm:h-56 md:h-64 rounded-2xl overflow-hidden bg-gradient-to-br ${HERO_CARDS[(vm.currentSlide + 1) % HERO_CARDS.length].bgColor} shadow-xl`}
               >
                 <div className="absolute inset-0 bg-black/30" />
                 <img
-                  src={HERO_CARDS[(currentSlide + 1) % 2].image}
-                  alt={HERO_CARDS[(currentSlide + 1) % 2].title}
+                  src={HERO_CARDS[(vm.currentSlide + 1) % HERO_CARDS.length].image}
+                  alt={HERO_CARDS[(vm.currentSlide + 1) % HERO_CARDS.length].title}
                   className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-50"
                 />
                 <div className="relative z-10 h-full flex flex-col justify-center px-6 md:px-8">
                   <h2 className="text-white text-xl sm:text-2xl md:text-3xl font-bold mb-2">
-                    {HERO_CARDS[(currentSlide + 1) % 2].title}
+                    {HERO_CARDS[(vm.currentSlide + 1) % HERO_CARDS.length].title}
                   </h2>
                   <p className="text-white/90 text-sm sm:text-base">
-                    {HERO_CARDS[(currentSlide + 1) % 2].subtitle}
+                    {HERO_CARDS[(vm.currentSlide + 1) % HERO_CARDS.length].subtitle}
                   </p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Navigation Arrows */}
           <button
-            onClick={goToPrevious}
+            onClick={vm.goToPrevious}
             className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center text-gray-800 shadow-lg transition-all z-20"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,7 +77,7 @@ export const HeroSlider = () => {
             </svg>
           </button>
           <button
-            onClick={goToNext}
+            onClick={vm.goToNext}
             className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center text-gray-800 shadow-lg transition-all z-20"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -104,14 +85,13 @@ export const HeroSlider = () => {
             </svg>
           </button>
 
-          {/* Slide Indicators */}
           <div className="flex justify-center gap-2 mt-4">
-            {[0, 1].map((index) => (
+            {HERO_CARDS.map((_, index) => (
               <button
                 key={index}
-                onClick={() => setCurrentSlide(index)}
+                onClick={() => vm.setCurrentSlide(index)}
                 className={`h-2 rounded-full transition-all ${
-                  currentSlide === index ? 'bg-gray-800 w-8' : 'bg-gray-300 w-2'
+                  vm.currentSlide === index ? 'bg-gray-800 w-8' : 'bg-gray-300 w-2'
                 }`}
               />
             ))}

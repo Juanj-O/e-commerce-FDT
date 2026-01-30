@@ -1,15 +1,16 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import type {
-  Transaction,
-  TransactionStatus,
   CreateTransactionRequest,
   ProcessPaymentResponse,
+  Transaction,
+  TransactionStatus,
 } from '../../types';
+import { transactionsApi } from '../../services/api';
 
 interface TransactionState {
   current: Transaction | null;
-  status: 'idle' | 'loading' | 'succeeded' | 'failed';
+  status: 'idle' | 'loading' | 'checking' | 'succeeded' | 'failed';
   error: string | null;
   paymentResponse: ProcessPaymentResponse | null;
 }
@@ -21,65 +22,30 @@ const initialState: TransactionState = {
   paymentResponse: null,
 };
 
-// TODO: Replace with real API call when backend is ready
+// Procesar pago con API real
 export const processPayment = createAsyncThunk(
   'transaction/processPayment',
   async (request: CreateTransactionRequest): Promise<ProcessPaymentResponse> => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Simulate payment - approve if card ends in even number, decline if odd
-    const lastDigit = parseInt(request.card.number.slice(-1));
-    const isApproved = lastDigit % 2 === 0;
-
-    const transaction: Transaction = {
-      id: `txn_${Date.now()}`,
-      customerId: `cust_${Date.now()}`,
-      productId: request.productId,
-      deliveryId: `del_${Date.now()}`,
-      quantity: request.quantity,
-      productAmount: 5499000 * request.quantity, // dummy price
-      baseFee: 5000,
-      deliveryFee: 10000,
-      totalAmount: (5499000 * request.quantity) + 5000 + 10000,
-      status: isApproved ? 'APPROVED' : 'DECLINED',
-      wompiTransactionId: isApproved ? `wompi_${Date.now()}` : undefined,
-      wompiReference: isApproved ? `REF-${Date.now()}` : undefined,
-      paymentMethod: 'CARD',
-      cardLastFour: request.card.number.slice(-4),
-      errorMessage: isApproved ? undefined : 'Payment declined by issuer',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    return {
-      transaction,
-      customer: request.customer,
-      delivery: request.delivery,
-    };
+    const response = await transactionsApi.create(request);
+    return response.data;
   }
 );
 
+// Consultar estado de la transacción (backend consulta Wompi y actualiza BD)
+export const checkTransactionStatus = createAsyncThunk(
+  'transaction/checkStatus',
+  async (transactionId: string): Promise<Transaction> => {
+    const response = await transactionsApi.getById(transactionId);
+    return response.data;
+  }
+);
+
+// Obtener transacción por ID
 export const fetchTransaction = createAsyncThunk(
   'transaction/fetchTransaction',
-  async (id: string) => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    // Return dummy transaction
-    const transaction: Transaction = {
-      id,
-      customerId: 'cust_dummy',
-      productId: 'prod_dummy',
-      deliveryId: 'del_dummy',
-      quantity: 1,
-      productAmount: 5499000,
-      baseFee: 5000,
-      deliveryFee: 10000,
-      totalAmount: 5514000,
-      status: 'APPROVED',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    return transaction;
+  async (id: string): Promise<Transaction> => {
+    const response = await transactionsApi.getById(id);
+    return response.data;
   }
 );
 
@@ -120,6 +86,18 @@ const transactionSlice = createSlice({
       .addCase(processPayment.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.error.message || 'Payment processing failed';
+      })
+      .addCase(checkTransactionStatus.pending, (state) => {
+        state.status = 'checking';
+        state.error = null;
+      })
+      .addCase(checkTransactionStatus.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.current = action.payload;
+      })
+      .addCase(checkTransactionStatus.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.error.message || 'Failed to check transaction status';
       })
       .addCase(fetchTransaction.pending, (state) => {
         state.status = 'loading';

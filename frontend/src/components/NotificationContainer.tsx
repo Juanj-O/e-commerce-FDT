@@ -11,14 +11,14 @@ const NotificationContainer = () => {
   const notifications = useAppSelector(selectNotifications);
 
   useEffect(() => {
-    notifications.forEach((notification) => {
+    const timers = notifications.map((notification) => {
       const duration = notification.duration || 3000;
-      const timer = setTimeout(() => {
+      return setTimeout(() => {
         dispatch(removeNotification(notification.id));
       }, duration);
-
-      return () => clearTimeout(timer);
     });
+
+    return () => timers.forEach((timer) => clearTimeout(timer));
   }, [notifications, dispatch]);
 
   const getNotificationStyles = (type: NotificationType) => {

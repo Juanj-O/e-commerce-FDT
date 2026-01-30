@@ -28,7 +28,7 @@ export interface CreditCardData {
   cvc: string;
 }
 
-export type CardBrand = 'visa' | 'mastercard' | 'amex' | 'unknown';
+export type CardBrand = 'visa' | 'mastercard' | 'amex' | 'diners' | 'unknown';
 
 export interface Transaction {
   id: string;

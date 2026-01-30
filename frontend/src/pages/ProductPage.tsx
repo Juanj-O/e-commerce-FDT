@@ -1,64 +1,16 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useAppDispatch, useAppSelector } from '../app/hooks';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
-import { setProduct, setQuantity, setStep } from '../features/checkout/checkoutSlice';
-import { fetchProducts, selectProduct } from '../features/products/productsSlice';
-import { addToCart } from '../features/cart/cartSlice';
-import { useNotification } from '../hooks/useNotification';
+import { useProductViewModel } from '../hooks/useProductViewModel';
+import { formatPrice } from '../utils/formatters';
 import type { Product } from '../types';
 
 const ProductPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
-  const { showSuccess } = useNotification();
-  const { items, loading } = useAppSelector((state) => state.products);
-  const [quantity, setLocalQuantity] = useState(1);
-  const [isInfoOpen, setIsInfoOpen] = useState(true);
+  const vm = useProductViewModel(id);
 
-  const product = items.find((item) => item.id === id);
-
-  useEffect(() => {
-    if (items.length === 0) {
-      dispatch(fetchProducts());
-    }
-  }, [dispatch, items.length]);
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(price);
-  };
-
-  const handleBuyNow = () => {
-    if (!product) return;
-    
-    dispatch(selectProduct(product));
-    dispatch(setProduct(product));
-    dispatch(setQuantity(quantity));
-    dispatch(setStep('payment'));
-    navigate('/checkout');
-  };
-
-  const handleQuantityChange = (newQuantity: number) => {
-    if (!product) return;
-    if (newQuantity < 1) return;
-    if (newQuantity > product.stock) return;
-    setLocalQuantity(newQuantity);
-  };
-
-  const handleAddToCart = () => {
-    if (!product) return;
-    
-    dispatch(addToCart({ product, quantity }));
-    showSuccess(`${product.name} agregado al carrito`, 2000);
-  };
-
-  if (loading) {
+  if (vm.loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <Header />
@@ -70,7 +22,7 @@ const ProductPage = () => {
     );
   }
 
-  if (!product) {
+  if (!vm.product) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <Header />
@@ -88,8 +40,6 @@ const ProductPage = () => {
     );
   }
 
-  const isOutOfStock = product.stock <= 0;
-
   return (
     <div className="min-h-screen bg-white">
       <Header />
@@ -98,12 +48,11 @@ const ProductPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
           {/* Product Images */}
           <div className="space-y-4">
-            {/* Main Image */}
             <div className="aspect-square bg-gray-50 rounded-xl overflow-hidden flex items-center justify-center">
-              {product.imageUrl ? (
+              {vm.product.imageUrl ? (
                 <img
-                  src={product.imageUrl}
-                  alt={product.name}
+                  src={vm.product.imageUrl}
+                  alt={vm.product.name}
                   className="w-full h-full object-contain p-8"
                 />
               ) : (
@@ -118,7 +67,6 @@ const ProductPage = () => {
 
           {/* Product Info */}
           <div className="flex flex-col">
-            {/* Breadcrumb */}
             <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
               <span className="hover:text-gray-900 cursor-pointer" onClick={() => navigate('/')}>
                 Tecnología
@@ -126,37 +74,31 @@ const ProductPage = () => {
               <span>›</span>
             </div>
 
-            {/* Product Name */}
             <h1 className="text-xl md:text-2xl font-normal text-gray-900 mb-4">
-              {product.name}
+              {vm.product.name}
             </h1>
 
-            {/* Price */}
             <div className="mb-3">
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-bold text-gray-900">
-                  {formatPrice(product.price)}
+                  {formatPrice(vm.product.price)}
                 </span>
               </div>
               <div className="text-sm text-blue-600 font-medium mt-1">
-                Cash máximo {formatPrice(product.price * 0.02)}
+                Cash máximo {formatPrice(vm.product.price * 0.02)}
               </div>
             </div>
 
-            {/* Variant Selector */}
             <div className="mb-4">
-              <label className="block text-sm text-gray-700 mb-2">
-                Random
-              </label>
+              <label className="block text-sm text-gray-700 mb-2">Random</label>
             </div>
 
-            {/* Quantity Selector */}
-            {!isOutOfStock && (
+            {!vm.isOutOfStock && (
               <div className="mb-6">
                 <div className="flex items-center gap-3 mb-4">
                   <button
-                    onClick={() => handleQuantityChange(quantity - 1)}
-                    disabled={quantity <= 1}
+                    onClick={() => vm.handleQuantityChange(vm.quantity - 1)}
+                    disabled={vm.quantity <= 1}
                     className="w-10 h-10 rounded-xl border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -165,15 +107,15 @@ const ProductPage = () => {
                   </button>
                   <input
                     type="number"
-                    value={quantity}
-                    onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 1)}
+                    value={vm.quantity}
+                    onChange={(e) => vm.handleQuantityChange(parseInt(e.target.value) || 1)}
                     className="w-16 h-10 text-center border border-gray-300 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-400"
                     min="1"
-                    max={product.stock}
+                    max={vm.product.stock}
                   />
                   <button
-                    onClick={() => handleQuantityChange(quantity + 1)}
-                    disabled={quantity >= product.stock}
+                    onClick={() => vm.handleQuantityChange(vm.quantity + 1)}
+                    disabled={vm.quantity >= vm.product.stock}
                     className="w-10 h-10 rounded-xl border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -183,40 +125,37 @@ const ProductPage = () => {
                   <div className="ml-auto text-right">
                     <div className="text-sm text-gray-500">COP</div>
                     <div className="text-lg font-bold text-gray-900">
-                      {formatPrice(product.price * quantity)}
+                      {formatPrice(vm.product.price * vm.quantity)}
                     </div>
                   </div>
                 </div>
-                
-                {/* Stock info */}
+
                 <div className="text-sm text-gray-600 mb-4">
-                  <span className="font-medium">{quantity} unidad(es)</span>
+                  <span className="font-medium">{vm.quantity} unidad(es)</span>
                   <div className="text-gray-500 mt-1">
-                    Puedes comprar hasta {product.stock} unidad(es).
+                    Puedes comprar hasta {vm.product.stock} unidad(es).
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-3 mb-6">
               <button
-                onClick={handleAddToCart}
-                disabled={isOutOfStock}
+                onClick={vm.handleAddToCart}
+                disabled={vm.isOutOfStock}
                 className="flex-1 px-6 py-3 border-2 border-teal-500 text-teal-600 font-semibold rounded-xl hover:bg-teal-50 disabled:border-gray-300 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
               >
                 Agregar al Carrito
               </button>
               <button
-                onClick={handleBuyNow}
-                disabled={isOutOfStock}
+                onClick={vm.handleBuyNow}
+                disabled={vm.isOutOfStock}
                 className="flex-1 px-6 py-3 bg-teal-500 text-white font-semibold rounded-xl hover:bg-teal-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
               >
-                {isOutOfStock ? 'Agotado' : 'Comprar'}
+                {vm.isOutOfStock ? 'Agotado' : 'Comprar'}
               </button>
             </div>
 
-            {/* Shipping Info */}
             <div className="border-t border-gray-200 pt-4">
               <div className="flex items-start gap-2 text-sm">
                 <svg className="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -237,15 +176,14 @@ const ProductPage = () => {
         {/* Product Details Section */}
         <div className="mt-12 max-w-5xl mx-auto">
           <div className="border-t border-gray-200">
-            {/* Información Section */}
             <div className="border-b border-gray-200">
               <button
-                onClick={() => setIsInfoOpen(!isInfoOpen)}
+                onClick={() => vm.setIsInfoOpen(!vm.isInfoOpen)}
                 className="w-full flex items-center justify-between py-5 text-left hover:bg-gray-50 transition-colors"
               >
                 <h2 className="text-lg font-semibold text-gray-900">Información</h2>
                 <svg
-                  className={`w-5 h-5 text-gray-500 transition-transform ${isInfoOpen ? 'rotate-180' : ''}`}
+                  className={`w-5 h-5 text-gray-500 transition-transform ${vm.isInfoOpen ? 'rotate-180' : ''}`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -253,10 +191,10 @@ const ProductPage = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              
-              {isInfoOpen && (
+
+              {vm.isInfoOpen && (
                 <div className="pb-6">
-                  <ProductSpecifications product={product} />
+                  <ProductSpecifications product={vm.product} />
                 </div>
               )}
             </div>
@@ -264,13 +202,11 @@ const ProductPage = () => {
         </div>
       </div>
 
-      {/* Footer */}
       <Footer />
     </div>
   );
 };
 
-// Component for Product Specifications
 interface ProductSpecificationsProps {
   product: Product;
 }
@@ -295,12 +231,8 @@ const ProductSpecifications = ({ product }: ProductSpecificationsProps) => {
         <tbody>
           {specifications.map((spec, index) => (
             <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-              <td className="px-6 py-4 text-sm font-medium text-gray-700 w-1/3">
-                {spec.label}
-              </td>
-              <td className="px-6 py-4 text-sm text-gray-900">
-                {spec.value}
-              </td>
+              <td className="px-6 py-4 text-sm font-medium text-gray-700 w-1/3">{spec.label}</td>
+              <td className="px-6 py-4 text-sm text-gray-900">{spec.value}</td>
             </tr>
           ))}
         </tbody>
